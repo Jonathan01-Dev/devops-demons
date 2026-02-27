@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Environment and secrets
+.env
+.keys/
+*.key
+
+# Local runtime artifacts
+.archipel/
+*.log
+*.err
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
