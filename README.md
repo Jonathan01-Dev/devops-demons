@@ -1,88 +1,78 @@
-# Archipel Hackathon - Sprint 0
+# Archipel Hackathon - Sprint 0 + Sprint 1
 
-## 1. Description du projet
-Archipel est un protocole P2P chiffré et décentralisé qui doit fonctionner en réseau local sans serveur central.
-Ce dépôt couvre le Sprint 0 : cadrage technique, structure du projet, configuration, et génération d'identité cryptographique des nœuds.
+## Sprint 0
+- Structure de projet initiale
+- Configuration `.env.example`
+- Generateur de cles Ed25519 (`python main.py keygen`)
 
-## 2. Membres de l'équipe
-- A compléter
-- A completer
-- A completer
+## Sprint 1 (objectif atteint dans ce repo)
+Couche reseau P2P minimale:
+- decouverte de pairs via UDP multicast `239.255.42.99:6000`
+- emission `HELLO` periodique
+- table de pairs persistante (`.archipel/peers-<port>.json`)
+- serveur TCP local pour echange `PEER_LIST` (`GET_PEERS`)
+- timeout des pairs inactifs
 
-## 3. Architecture cible (vue Sprint 0)
-```text
-+-------------------+          +-------------------+          +-------------------+
-| Node A            | <------> | Node B            | <------> | Node C            |
-| client + serveur  |          | client + serveur  |          | client + serveur  |
-| Ed25519 identity  |          | Ed25519 identity  |          | Ed25519 identity  |
-+-------------------+          +-------------------+          +-------------------+
-        ^                                 ^                               ^
-        |                                 |                               |
-        +-------- UDP multicast (HELLO/discovery) +-----------------------+
-                          TCP (data/messages/chunks)
-```
-
-## 4. Choix techniques
-- Langage: Python 3
-  - Rapide pour prototypage hackathon
-  - Bonne lisibilité pour équipe multi-niveaux
-  - Ecosystème crypto/réseau mature
-- Structure modulaire:
-  - `src/crypto` pour identités, signatures, chiffrement
-  - `src/network` pour découverte/routage
-  - `src/transfer` pour chunking/transfert de fichiers
-  - `src/messaging` pour messages chiffrés
-  - `src/cli` pour interface terminal
-
-## 5. Livrables Sprint 0
-- Structure de dépôt créée
-- Fichier `.env.example` créé
-- Fichier `.gitignore` créé
-- Générateur de clés Ed25519 implémenté
-
-## 6. Génération d'identité du nœud
-Commande:
+## Commandes
+Generer les cles (Sprint 0):
 ```bash
 python main.py keygen --out-dir .keys
 ```
 
-Fichiers produits:
-- `.keys/node_private.key` (secret, jamais versionné)
-- `.keys/node_public.key` (partageable)
-
-Affichage terminal:
-- Chemin des fichiers
-- Node ID (hex)
-
-## 7. Lancement du projet
-1. Copier `.env.example` vers `.env`
-2. Adapter les ports/adresses selon la machine
-3. Générer les clés:
+Demarrer un noeud Sprint 1:
 ```bash
-python main.py keygen --out-dir .keys
+python main.py start
 ```
 
-## 8. Structure du dépôt
+Afficher la peer table locale:
+```bash
+python main.py peers
+```
+
+## Variables `.env`
+- `NODE_ID` (optionnel, 64 hex chars)
+- `TCP_PORT` (defaut `7777`)
+- `UDP_PORT` (defaut `6000`)
+- `MULTICAST_ADDR` (defaut `239.255.42.99`)
+- `HELLO_INTERVAL_MS` (defaut `30000`)
+- `PEER_TIMEOUT_MS` (defaut `90000`)
+
+## Test Sprint 1 (3 noeuds, meme machine)
+Ouvrir 3 terminaux:
+
+Terminal 1:
+```powershell
+$env:TCP_PORT='7777'; $env:HELLO_INTERVAL_MS='3000'; python main.py start
+```
+
+Terminal 2:
+```powershell
+$env:TCP_PORT='7778'; $env:HELLO_INTERVAL_MS='3000'; python main.py start
+```
+
+Terminal 3:
+```powershell
+$env:TCP_PORT='7779'; $env:HELLO_INTERVAL_MS='3000'; python main.py start
+```
+
+Attendu:
+- chaque noeud voit les autres via logs `[hello]`
+- `python main.py peers` montre des pairs persistes
+
+## Structure
 ```text
-archipel-hackathon/
+devops-demons/
   README.md
   .env.example
   .gitignore
   main.py
-
   src/
     crypto/
     network/
     transfer/
     messaging/
     cli/
-
   tests/
   docs/
   demo/
 ```
-
-## 9. Sécurité minimale Sprint 0
-- Ne jamais commiter `.env` et les clés privées
-- Régénérer les clés si compromission
-- Utiliser des variables d'environnement pour la configuration sensible
