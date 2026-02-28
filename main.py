@@ -4,6 +4,7 @@ from pathlib import Path
 
 from src.config import load_config
 from src.crypto.keygen import generate_node_identity
+from src.messaging.sprint2_secure_channel import Sprint2SecureClient, Sprint2SecureServer
 from src.network.node import Sprint1Node
 from src.network.peer_table import PeerTable
 
@@ -17,6 +18,17 @@ def main() -> int:
     keygen_parser.add_argument("--force", action="store_true", help="Overwrite existing key files")
     sub.add_parser("start", help="Start Sprint 1 P2P node")
     sub.add_parser("peers", help="Show persisted peer table")
+    s2_server = sub.add_parser("s2-server", help="Start Sprint 2 secure server")
+    s2_server.add_argument("--host", default="0.0.0.0")
+    s2_server.add_argument("--port", type=int, default=9001)
+    s2_server.add_argument("--keys-dir", default=".keys")
+    s2_server.add_argument("--trust-db", default=".archipel/trust.json")
+    s2_send = sub.add_parser("s2-send", help="Sprint 2 secure send")
+    s2_send.add_argument("--host", required=True)
+    s2_send.add_argument("--port", type=int, default=9001)
+    s2_send.add_argument("--msg", required=True)
+    s2_send.add_argument("--keys-dir", default=".keys")
+    s2_send.add_argument("--trust-db", default=".archipel/trust.json")
 
     args = parser.parse_args()
 
@@ -31,6 +43,10 @@ def main() -> int:
         return asyncio.run(run_start())
     if args.command == "peers":
         return run_peers()
+    if args.command == "s2-server":
+        return asyncio.run(run_s2_server(args.host, args.port, Path(args.keys_dir), Path(args.trust_db)))
+    if args.command == "s2-send":
+        return asyncio.run(run_s2_send(args.host, args.port, args.msg, Path(args.keys_dir), Path(args.trust_db)))
 
     parser.print_help()
     return 1
@@ -67,6 +83,18 @@ def run_peers() -> int:
         return 0
     for p in peers:
         print(f"{p['node_id']}  {p['ip']}:{p['tcp_port']}  last_seen={p['last_seen']}")
+    return 0
+
+
+async def run_s2_server(host: str, port: int, keys_dir: Path, trust_db: Path) -> int:
+    server = Sprint2SecureServer(host=host, port=port, keys_dir=keys_dir, trust_db=trust_db)
+    await server.run()
+    return 0
+
+
+async def run_s2_send(host: str, port: int, msg: str, keys_dir: Path, trust_db: Path) -> int:
+    client = Sprint2SecureClient(host=host, port=port, keys_dir=keys_dir, trust_db=trust_db)
+    await client.send(msg)
     return 0
 
 

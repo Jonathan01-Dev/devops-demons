@@ -1,4 +1,4 @@
-# Archipel Hackathon - Sprint 0 + Sprint 1
+# Archipel Hackathon - Sprint 0 + Sprint 1 + Sprint 2
 
 ## Sprint 0
 - Structure de projet initiale
@@ -12,6 +12,14 @@ Couche reseau P2P minimale:
 - table de pairs persistante (`.archipel/peers-<port>.json`)
 - serveur TCP local pour echange `PEER_LIST` (`GET_PEERS`)
 - timeout des pairs inactifs
+
+## Sprint 2 (MVP dans ce repo)
+- handshake authentifie sans CA: `HELLO -> HELLO_REPLY(sig_B) -> AUTH(sig_A) -> AUTH_OK`
+- identite noeud: Ed25519 (cles permanentes)
+- echange de secret: X25519 (cles ephemeres par connexion)
+- derivation de cle: HKDF-SHA256
+- chiffrement message: AES-256-GCM
+- trust model: TOFU (premier contact memorise, mismatch detecte)
 
 ## Commandes
 Generer les cles (Sprint 0):
@@ -27,6 +35,16 @@ python main.py start
 Afficher la peer table locale:
 ```bash
 python main.py peers
+```
+
+Serveur securise Sprint 2:
+```bash
+python main.py s2-server --host 0.0.0.0 --port 9001 --keys-dir .keys --trust-db .archipel/trust.json
+```
+
+Client securise Sprint 2:
+```bash
+python main.py s2-send --host <IP_SERVEUR> --port 9001 --msg "Hello chiffré" --keys-dir .keys --trust-db .archipel/trust.json
 ```
 
 ## Variables `.env`
