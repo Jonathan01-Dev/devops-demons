@@ -67,9 +67,9 @@ class GeminiAssistant:
 
     def query(self, user_query: str, no_ai: bool = False) -> tuple[bool, str]:
         if no_ai:
-            return False, "Assistant IA désactivé (--no-ai)."
+            return True, self._local_response(user_query, reason="Mode local (--no-ai)")
         if not self.api_key:
-            return False, "GEMINI_API_KEY manquant. Configure la clé API pour activer l'assistant."
+            return True, self._local_response(user_query, reason="Clé Gemini absente")
 
         context = self.load_recent_context()
         prompt = self._build_prompt(context, user_query)
@@ -102,17 +102,59 @@ class GeminiAssistant:
                 last_http_error = f"HTTP {exc.code} ({err_body[:140]})"
                 if exc.code == 404:
                     continue
-                return False, f"Gemini HTTP error: {last_http_error}"
+                return True, self._local_response(user_query, reason=f"Gemini indisponible: {last_http_error}")
             except Exception as exc:
-                return False, f"Gemini inaccessible en mode offline/réseau: {exc}"
+                return True, self._local_response(user_query, reason=f"Réseau/API indisponible: {exc}")
 
         if body is None:
-            return False, f"Aucun modèle Gemini valide trouvé. Essayés: {', '.join(tried)}. Dernière erreur: {last_http_error}"
+            return True, self._local_response(
+                user_query,
+                reason=f"Aucun modèle Gemini valide ({', '.join(tried)})",
+            )
 
         text = self._extract_text(body)
         if not text:
-            return False, "Réponse Gemini vide ou invalide."
+            return True, self._local_response(user_query, reason="Réponse Gemini vide")
         return True, text
+
+    def _local_response(self, user_query: str, reason: str = "") -> str:
+        q = user_query.strip()
+        ql = q.lower()
+
+        if "demo" in ql or "jury" in ql:
+            body = (
+                "Plan démo rapide:\n"
+                "1) Sprint 1: lancer 2 noeuds et montrer `peers`.\n"
+                "2) Sprint 2: envoyer un message chiffré et montrer ACK.\n"
+                "3) Sprint 3: transférer un fichier et comparer SHA-256.\n"
+                "4) Sprint 4: montrer l'UI web + ask IA."
+            )
+        elif "wireshark" in ql or "chiffr" in ql:
+            body = (
+                "Pour prouver le chiffrement:\n"
+                "1) Filtre `tcp.port == 9001 || tcp.port == 9101`.\n"
+                "2) Vérifier que le plaintext n'apparaît pas.\n"
+                "3) Montrer nonce/ciphertext et ACK applicatif."
+            )
+        elif "test" in ql:
+            body = (
+                "Checklist test:\n"
+                "1) Discovery: 2 noeuds visibles.\n"
+                "2) Message E2E: ACK OK.\n"
+                "3) Fichier: hash source == hash destination.\n"
+                "4) Offline IA: `--no-ai` sans crash."
+            )
+        else:
+            body = (
+                "Réponse locale:\n"
+                f"- Question reçue: {q or '(vide)'}\n"
+                "- Recommandation: donne le contexte (sprint, machine, commande, erreur) "
+                "pour une réponse plus précise."
+            )
+
+        if reason:
+            return f"[Mode IA local] {reason}\n\n{body}"
+        return body
 
     def _build_prompt(self, context: list[dict[str, str]], user_query: str) -> str:
         lines: list[str] = [

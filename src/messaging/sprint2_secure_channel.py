@@ -172,7 +172,8 @@ class Sprint2SecureServer:
                 _unb64(msg["ciphertext"]),
                 aad=hs.transcript_hash,
             )
-            print(f"[s2-server] msg from {hs.peer_node_id[:10]}..: {plaintext.decode('utf-8', errors='replace')}")
+            decoded = plaintext.decode("utf-8", errors="replace")
+            print(f"[s2-server] msg from {hs.peer_node_id[:10]}..: {decoded}")
             await _write_json_line(writer, {"type": "ACK", "status": "OK"})
         except Exception as exc:
             await _write_json_line(writer, {"type": "ERROR", "error": str(exc)})

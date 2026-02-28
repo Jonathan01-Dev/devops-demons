@@ -222,7 +222,7 @@ _HTML = """<!doctype html>
       border-radius: 16px;
       padding: 18px 20px;
       margin-bottom: 16px;
-      box-shadow: 0 18px 40px rgba(2,6,23,0.45);
+      box-shadow: 0 18px 40px rgba(2,6,23,0.15);
     }
     .title {
       margin: 0;
@@ -258,17 +258,10 @@ _HTML = """<!doctype html>
       border: 1px solid var(--stroke);
       border-radius: 14px;
       padding: 14px;
-      box-shadow: 0 6px 18px rgba(2,6,23,0.35);
+      box-shadow: 0 6px 18px rgba(2,6,23,0.08);
     }
-    .card h3 {
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-    .hint {
-      margin: 0 0 10px;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .card h3 { margin: 0 0 8px; font-size: 18px; }
+    .hint { margin: 0 0 10px; color: var(--muted); font-size: 13px; }
     input, textarea, button {
       width: 100%;
       margin-top: 8px;
@@ -312,6 +305,27 @@ _HTML = """<!doctype html>
       font-family: "Consolas", "Lucida Console", monospace;
       font-size: 12px;
     }
+    .chat {
+      background: #fff8fa;
+      border: 1px solid #cfb4bc;
+      border-radius: 10px;
+      min-height: 160px;
+      max-height: 280px;
+      overflow: auto;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .bubble {
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .bubble.user { background: #f6e8ed; border: 1px solid #dfc3cc; color: #4a1f2b; }
+    .bubble.ai { background: #fff; border: 1px solid #d8b6c1; color: #2f1820; }
     @media (max-width: 900px) {
       body { padding: 14px; }
       .grid { grid-template-columns: 1fr; }
@@ -358,7 +372,7 @@ _HTML = """<!doctype html>
         <textarea id="ask_text" rows="3" placeholder="Pose une question"></textarea>
         <label><input id="ask_no_ai" type="checkbox" style="width:auto" /> no-ai</label>
         <button onclick="askAi()">Ask assistant</button>
-        <pre id="out_ask"></pre>
+        <div id="ask_chat" class="chat"></div>
       </section>
       <section class="card">
         <h3>Receive</h3>
@@ -372,7 +386,8 @@ _HTML = """<!doctype html>
     async function apiGet(url, out) {
       const r = await fetch(url);
       const j = await r.json();
-      document.getElementById(out).textContent = JSON.stringify(j, null, 2);
+      if (out) document.getElementById(out).textContent = JSON.stringify(j, null, 2);
+      return j;
     }
     async function sendMsg() {
       const body = {
@@ -385,15 +400,29 @@ _HTML = """<!doctype html>
       document.getElementById('out_msg').textContent = JSON.stringify(j, null, 2);
     }
     async function askAi() {
+      const query = document.getElementById('ask_text').value;
+      if (!query.trim()) return;
+      appendAsk('user', query);
       const body = {
-        query: document.getElementById('ask_text').value,
+        query: query,
         no_ai: document.getElementById('ask_no_ai').checked
       };
       const r = await fetch('/api/ask', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
       const j = await r.json();
-      document.getElementById('out_ask').textContent = JSON.stringify(j, null, 2);
+      const answer = (j && j.data && j.data.answer) ? j.data.answer : JSON.stringify(j, null, 2);
+      appendAsk('ai', answer);
+      document.getElementById('ask_text').value = '';
+    }
+    function appendAsk(role, text) {
+      const root = document.getElementById('ask_chat');
+      const el = document.createElement('div');
+      el.className = 'bubble ' + (role === 'user' ? 'user' : 'ai');
+      el.textContent = text;
+      root.appendChild(el);
+      root.scrollTop = root.scrollHeight;
     }
   </script>
 </body>
 </html>
 """
+
