@@ -7,6 +7,7 @@ from src.crypto.keygen import generate_node_identity
 from src.messaging.sprint2_secure_channel import Sprint2SecureClient, Sprint2SecureServer
 from src.network.node import Sprint1Node
 from src.network.peer_table import PeerTable
+from src.transfer.sprint3_file_transfer import Sprint3FileDownloader, Sprint3FileServer
 
 
 def main() -> int:
@@ -29,6 +30,27 @@ def main() -> int:
     s2_send.add_argument("--msg", required=True)
     s2_send.add_argument("--keys-dir", default=".keys")
     s2_send.add_argument("--trust-db", default=".archipel/trust.json")
+    s3_server = sub.add_parser("s3-server", help="Sprint 3 chunk file server")
+    s3_server.add_argument("--host", default="0.0.0.0")
+    s3_server.add_argument("--port", type=int, default=9101)
+    s3_server.add_argument("--file", required=True)
+    s3_server.add_argument("--chunk-size", type=int, default=524288)
+    s3_server.add_argument("--keys-dir", default=".keys")
+    s3_server.add_argument("--trust-db", default=".archipel/trust.json")
+    s3_download = sub.add_parser("s3-download", help="Sprint 3 file download from peer")
+    s3_download.add_argument("--host")
+    s3_download.add_argument("--port", type=int, default=9101)
+    s3_download.add_argument(
+        "--peer",
+        action="append",
+        default=[],
+        help="Additional source peer in host:port format. Can be repeated.",
+    )
+    s3_download.add_argument("--parallel", type=int, default=3, help="Max parallel chunk downloads")
+    s3_download.add_argument("--out-dir", default="downloads")
+    s3_download.add_argument("--index-db", default=".archipel/index.json")
+    s3_download.add_argument("--keys-dir", default=".keys")
+    s3_download.add_argument("--trust-db", default=".archipel/trust.json")
 
     args = parser.parse_args()
 
@@ -47,6 +69,36 @@ def main() -> int:
         return asyncio.run(run_s2_server(args.host, args.port, Path(args.keys_dir), Path(args.trust_db)))
     if args.command == "s2-send":
         return asyncio.run(run_s2_send(args.host, args.port, args.msg, Path(args.keys_dir), Path(args.trust_db)))
+    if args.command == "s3-server":
+        return asyncio.run(
+            run_s3_server(
+                args.host,
+                args.port,
+                Path(args.keys_dir),
+                Path(args.trust_db),
+                Path(args.file),
+                int(args.chunk_size),
+            )
+        )
+    if args.command == "s3-download":
+        peers: list[tuple[str, int]] = []
+        for p in args.peer:
+            if ":" not in p:
+                raise SystemExit(f"Invalid --peer value '{p}' (expected host:port)")
+            host, port_raw = p.rsplit(":", 1)
+            peers.append((host, int(port_raw)))
+        return asyncio.run(
+            run_s3_download(
+                args.host,
+                args.port,
+                peers,
+                Path(args.keys_dir),
+                Path(args.trust_db),
+                Path(args.out_dir),
+                Path(args.index_db),
+                int(args.parallel),
+            )
+        )
 
     parser.print_help()
     return 1
@@ -95,6 +147,43 @@ async def run_s2_server(host: str, port: int, keys_dir: Path, trust_db: Path) ->
 async def run_s2_send(host: str, port: int, msg: str, keys_dir: Path, trust_db: Path) -> int:
     client = Sprint2SecureClient(host=host, port=port, keys_dir=keys_dir, trust_db=trust_db)
     await client.send(msg)
+    return 0
+
+
+async def run_s3_server(host: str, port: int, keys_dir: Path, trust_db: Path, file_path: Path, chunk_size: int) -> int:
+    server = Sprint3FileServer(
+        host=host,
+        port=port,
+        keys_dir=keys_dir,
+        trust_db=trust_db,
+        file_path=file_path,
+        chunk_size=chunk_size,
+    )
+    await server.run()
+    return 0
+
+
+async def run_s3_download(
+    host: str | None,
+    port: int | None,
+    peers: list[tuple[str, int]],
+    keys_dir: Path,
+    trust_db: Path,
+    out_dir: Path,
+    index_db: Path,
+    parallel: int,
+) -> int:
+    downloader = Sprint3FileDownloader(
+        host=host,
+        port=port,
+        peers=peers,
+        keys_dir=keys_dir,
+        trust_db=trust_db,
+        out_dir=out_dir,
+        index_db=index_db,
+        parallelism=parallel,
+    )
+    await downloader.download()
     return 0
 
 

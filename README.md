@@ -1,4 +1,4 @@
-# Archipel Hackathon - Sprint 0 + Sprint 1 + Sprint 2
+﻿# Archipel Hackathon - Sprint 0 + Sprint 1 + Sprint 2 + Sprint 3
 
 ## Sprint 0
 - Structure de projet initiale
@@ -20,6 +20,14 @@ Couche reseau P2P minimale:
 - derivation de cle: HKDF-SHA256
 - chiffrement message: AES-256-GCM
 - trust model: TOFU (premier contact memorise, mismatch detecte)
+
+## Sprint 3 (MVP dans ce repo)
+- serveur de partage de fichier en chunks
+- manifest signe (hash fichier + hash de chaque chunk)
+- requete/reponse `CHUNK_REQ` / `CHUNK_DATA`
+- verification SHA-256 de chaque chunk + verification signature fournisseur
+- reassemblage du fichier et verification hash final
+- index local des fichiers completes: `.archipel/index.json`
 
 ## Commandes
 Generer les cles (Sprint 0):
@@ -44,7 +52,22 @@ python main.py s2-server --host 0.0.0.0 --port 9001 --keys-dir .keys --trust-db 
 
 Client securise Sprint 2:
 ```bash
-python main.py s2-send --host <IP_SERVEUR> --port 9001 --msg "Hello chiffré" --keys-dir .keys --trust-db .archipel/trust.json
+python main.py s2-send --host <IP_SERVEUR> --port 9001 --msg "Hello chiffre" --keys-dir .keys --trust-db .archipel/trust.json
+```
+
+Serveur fichier Sprint 3:
+```bash
+python main.py s3-server --host 0.0.0.0 --port 9101 --file demo/sample.bin --keys-dir .keys-a --trust-db .archipel/trust-a.json
+```
+
+Telechargement fichier Sprint 3:
+```bash
+python main.py s3-download --host <IP_SERVEUR> --port 9101 --out-dir downloads --keys-dir .keys-b --trust-db .archipel/trust-b.json
+```
+
+Telechargement multi-sources Sprint 3:
+```bash
+python main.py s3-download --peer 192.168.1.10:9101 --peer 192.168.1.11:9101 --parallel 4 --out-dir downloads --keys-dir .keys-b --trust-db .archipel/trust-b.json
 ```
 
 ## Variables `.env`
